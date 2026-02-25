@@ -1,0 +1,9 @@
+* text=auto
+*.cs text diff=csharp
+*.shader text
+*.cginc text
+*.compute text
+*.mat merge=unityyamlmerge eol=lf
+*.unity merge=unityyamlmerge eol=lf
+*.prefab merge=unityyamlmerge eol=lf
+*.asset merge=unityyamlmerge eol=lf
