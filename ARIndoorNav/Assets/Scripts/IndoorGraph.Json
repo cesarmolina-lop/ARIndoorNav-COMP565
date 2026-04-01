@@ -1,0 +1,286 @@
+{
+  "nodes": [
+    {
+      "id": "H1",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "floor": 1,
+      "type": "hallway"
+    },
+
+    {
+      "id": "C101",
+      "position": {
+        "x": -3,
+        "y": 0,
+        "z": 2
+      },
+      "floor": 1,
+      "type": "classroom"
+    },
+    {
+      "id": "C102",
+      "position": {
+        "x": -3,
+        "y": 0,
+        "z": 4
+      },
+      "floor": 1,
+      "type": "classroom"
+    },
+    {
+      "id": "C103",
+      "position": {
+        "x": -3,
+        "y": 0,
+        "z": 6
+      },
+      "floor": 1,
+      "type": "classroom"
+    },
+    {
+      "id": "C104",
+      "position": {
+        "x": 3,
+        "y": 0,
+        "z": 2
+      },
+      "floor": 1,
+      "type": "classroom"
+    },
+    {
+      "id": "C105",
+      "position": {
+        "x": 3,
+        "y": 0,
+        "z": 4
+      },
+      "floor": 1,
+      "type": "classroom"
+    },
+    {
+      "id": "C106",
+      "position": {
+        "x": 3,
+        "y": 0,
+        "z": 6
+      },
+      "floor": 1,
+      "type": "classroom"
+    },
+
+    {
+      "id": "Elevator1",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": -3
+      },
+      "floor": 1,
+      "type": "elevator"
+    },
+    {
+      "id": "Stairs1",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 9
+      },
+      "floor": 1,
+      "type": "stairs"
+    },
+
+    {
+      "id": "H2",
+      "position": {
+        "x": 0,
+        "y": 3,
+        "z": 0
+      },
+      "floor": 2,
+      "type": "hallway"
+    },
+
+    {
+      "id": "C201",
+      "position": {
+        "x": -3,
+        "y": 3,
+        "z": 2
+      },
+      "floor": 2,
+      "type": "classroom"
+    },
+    {
+      "id": "C202",
+      "position": {
+        "x": -3,
+        "y": 3,
+        "z": 4
+      },
+      "floor": 2,
+      "type": "classroom"
+    },
+    {
+      "id": "C203",
+      "position": {
+        "x": -3,
+        "y": 3,
+        "z": 6
+      },
+      "floor": 2,
+      "type": "classroom"
+    },
+    {
+      "id": "C204",
+      "position": {
+        "x": 3,
+        "y": 3,
+        "z": 2
+      },
+      "floor": 2,
+      "type": "classroom"
+    },
+    {
+      "id": "C205",
+      "position": {
+        "x": 3,
+        "y": 3,
+        "z": 4
+      },
+      "floor": 2,
+      "type": "classroom"
+    },
+    {
+      "id": "C206",
+      "position": {
+        "x": 3,
+        "y": 3,
+        "z": 6
+      },
+      "floor": 2,
+      "type": "classroom"
+    },
+
+    {
+      "id": "Elevator2",
+      "position": {
+        "x": 0,
+        "y": 3,
+        "z": -3
+      },
+      "floor": 2,
+      "type": "elevator"
+    },
+    {
+      "id": "Stairs2",
+      "position": {
+        "x": 0,
+        "y": 3,
+        "z": 9
+      },
+      "floor": 2,
+      "type": "stairs"
+    }
+  ],
+
+  "edges": [
+    {
+      "from": "C101",
+      "to": "H1",
+      "cost": 2
+    },
+    {
+      "from": "C102",
+      "to": "H1",
+      "cost": 4
+    },
+    {
+      "from": "C103",
+      "to": "H1",
+      "cost": 6
+    },
+    {
+      "from": "C104",
+      "to": "H1",
+      "cost": 2
+    },
+    {
+      "from": "C105",
+      "to": "H1",
+      "cost": 4
+    },
+    {
+      "from": "C106",
+      "to": "H1",
+      "cost": 6
+    },
+
+    {
+      "from": "H1",
+      "to": "Elevator1",
+      "cost": 2
+    },
+    {
+      "from": "H1",
+      "to": "Stairs1",
+      "cost": 8
+    },
+
+    {
+      "from": "Elevator1",
+      "to": "Elevator2",
+      "cost": 1
+    },
+    {
+      "from": "Stairs1",
+      "to": "Stairs2",
+      "cost": 1
+    },
+
+    {
+      "from": "Elevator2",
+      "to": "H2",
+      "cost": 2
+    },
+    {
+      "from": "Stairs2",
+      "to": "H2",
+      "cost": 2
+    },
+
+    {
+      "from": "H2",
+      "to": "C201",
+      "cost": 2
+    },
+    {
+      "from": "H2",
+      "to": "C202",
+      "cost": 4
+    },
+    {
+      "from": "H2",
+      "to": "C203",
+      "cost": 6
+    },
+    {
+      "from": "H2",
+      "to": "C204",
+      "cost": 2
+    },
+    {
+      "from": "H2",
+      "to": "C205",
+      "cost": 4
+    },
+    {
+      "from": "H2",
+      "to": "C206",
+      "cost": 6
+    }
+  ]
+}
