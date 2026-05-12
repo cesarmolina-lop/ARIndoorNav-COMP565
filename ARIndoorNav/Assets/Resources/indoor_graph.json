@@ -1,0 +1,181 @@
+{
+  "_notes": [
+    "Coordinate system: Origin (0,0) = Front Door threshold.",
+    "X = horizontal (positive = right/east toward office side).",
+    "Z = depth (positive = north/into house).",
+    "All values in meters. Converted from measured floor plan.",
+    "Nodes placed at door thresholds, room centers, and hallway junctions.",
+    "Edges only exist where a person can physically walk (no wall cuts).",
+    "beaconMajor -1 = no physical beacon at this node.",
+    "isDestination true = appears in destination picker UI."
+  ],
+
+  "nodes": [
+    {
+      "id": "front_door",
+      "label": "Front Door",
+      "x": 2.59,
+      "z": 0.0,
+      "beaconMajor": 1,
+      "isDestination": true
+    },
+    {
+      "id": "living_room",
+      "label": "Living Room",
+      "x": 1.50,
+      "z": 2.50,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "kitchen_entry",
+      "label": "Kitchen Entry",
+      "x": 2.80,
+      "z": 4.80,
+      "beaconMajor": -1,
+      "isDestination": false
+    },
+    {
+      "id": "kitchen",
+      "label": "Kitchen",
+      "x": 1.80,
+      "z": 6.50,
+      "beaconMajor": 2,
+      "isDestination": true
+    },
+    {
+      "id": "laundry_door",
+      "label": "Laundry Room",
+      "x": 4.47,
+      "z": 5.20,
+      "beaconMajor": -1,
+      "isDestination": false
+    },
+    {
+      "id": "hallway_junction",
+      "label": "Hallway",
+      "x": 4.47,
+      "z": 6.80,
+      "beaconMajor": -1,
+      "isDestination": false
+    },
+    {
+      "id": "kitchen_br_door",
+      "label": "Kitchen Bathroom",
+      "x": 4.47,
+      "z": 8.20,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "master_br_entry",
+      "label": "Master Bedroom Entry",
+      "x": 5.80,
+      "z": 8.80,
+      "beaconMajor": -1,
+      "isDestination": false
+    },
+    {
+      "id": "master_bedroom",
+      "label": "Master Bedroom",
+      "x": 6.80,
+      "z": 7.20,
+      "beaconMajor": 3,
+      "isDestination": true
+    },
+    {
+      "id": "master_br_bathroom_door",
+      "label": "Master Bathroom",
+      "x": 5.80,
+      "z": 6.20,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "upper_hallway",
+      "label": "Upper Hallway",
+      "x": 4.47,
+      "z": 10.50,
+      "beaconMajor": -1,
+      "isDestination": false
+    },
+    {
+      "id": "br1_door",
+      "label": "Bedroom 1",
+      "x": 3.20,
+      "z": 11.80,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "br2_door",
+      "label": "Bedroom 2",
+      "x": 5.50,
+      "z": 11.80,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "stairs_door",
+      "label": "Stairs to 2nd Floor",
+      "x": 7.20,
+      "z": 11.40,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "back_door",
+      "label": "Back Door",
+      "x": 3.51,
+      "z": 12.50,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "office_entry",
+      "label": "Office",
+      "x": 5.80,
+      "z": 1.80,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "office_br_door",
+      "label": "Office Bathroom",
+      "x": 7.40,
+      "z": 1.20,
+      "beaconMajor": -1,
+      "isDestination": true
+    },
+    {
+      "id": "office_closet_door",
+      "label": "Office Closet",
+      "x": 7.40,
+      "z": 2.50,
+      "beaconMajor": -1,
+      "isDestination": true
+    }
+  ],
+
+  "edges": [
+    { "from": "front_door",        "to": "living_room"            },
+    { "from": "front_door",        "to": "office_entry"           },
+    { "from": "living_room",       "to": "kitchen_entry"          },
+    { "from": "kitchen_entry",     "to": "kitchen"                },
+    { "from": "kitchen_entry",     "to": "laundry_door"           },
+    { "from": "kitchen_entry",     "to": "hallway_junction"       },
+    { "from": "kitchen",           "to": "hallway_junction"       },
+    { "from": "laundry_door",      "to": "hallway_junction"       },
+    { "from": "hallway_junction",  "to": "kitchen_br_door"        },
+    { "from": "hallway_junction",  "to": "master_br_entry"        },
+    { "from": "hallway_junction",  "to": "upper_hallway"          },
+    { "from": "master_br_entry",   "to": "master_bedroom"         },
+    { "from": "master_bedroom",    "to": "master_br_bathroom_door"},
+    { "from": "upper_hallway",     "to": "br1_door"               },
+    { "from": "upper_hallway",     "to": "br2_door"               },
+    { "from": "upper_hallway",     "to": "stairs_door"            },
+    { "from": "upper_hallway",     "to": "back_door"              },
+    { "from": "office_entry",      "to": "office_br_door"         },
+    { "from": "office_entry",      "to": "office_closet_door"     }
+  ]
+}
