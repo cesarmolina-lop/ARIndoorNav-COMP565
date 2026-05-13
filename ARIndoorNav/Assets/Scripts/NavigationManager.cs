@@ -2,254 +2,150 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// HoloNav NavigationManager — the central hub.
-///
-/// Responsibilities:
-///   - Loads and owns the IndoorGraph
-///   - Receives current node from NearestBeaconResolver
-///   - Runs A* when start or destination changes
-///   - Converts route nodes → AR world-space Vector3 points
-///   - Feeds those points to ProceduralPathMesh, TurnMarkerPlacer, DestinationBeaconPlacer
-///   - Handles multi-leg navigation (destination → new destination chaining)
-///   - Detects arrival and notifies NavigationUIManager
-///
-/// SETUP:
-///   1. Attach to a GameObject in your AR scene (e.g. a new "NavigationManager" GO).
-///   2. Assign all Inspector references.
-///   3. Place indoor_graph.json in Assets/Resources/
-///   4. The anchorRoot is your existing AnchorRoot transform (set via ARTapToPlace or PlaceAnchorRoot).
+/// Central hub: loads graph, runs A*, converts coords to AR world space,
+/// drives ProceduralPathMesh / TurnMarkerPlacer / DestinationBeaconPlacer,
+/// detects arrival, supports multi-leg chaining.
 /// </summary>
 public class NavigationManager : MonoBehaviour
 {
-    // ── Inspector References ───────────────────────────────────────────────────
-    [Header("AR Scene References")]
-    [Tooltip("The transform placed on the floor by ARTapToPlace. All graph coords transform relative to this.")]
-    public Transform anchorRoot;
-
-    [Tooltip("Your existing ProceduralPathMesh script on PathMeshGenerator.")]
-    public ProceduralPathMesh pathMesh;
-
-    [Tooltip("Your existing TurnMarkerPlacer script on TurnMarkerSystem.")]
-    public TurnMarkerPlacer turnMarkerPlacer;
-
-    [Tooltip("Your existing DestinationBeaconPlacer script on DestinationBeaconSystem.")]
+    [Header("Scene references")]
+    public ProceduralPathMesh      pathMesh;
+    public TurnMarkerPlacer        turnMarkerPlacer;
     public DestinationBeaconPlacer destinationBeaconPlacer;
+    public NavigationUIManager     uiManager;
 
-    [Tooltip("NavigationUIManager for HUD updates.")]
-    public NavigationUIManager uiManager;
-
-    [Header("Graph Settings")]
-    [Tooltip("Filename inside Resources/ folder, without extension.")]
+    [Header("Graph")]
     public string graphResourceName = "indoor_graph";
-
-    [Tooltip("Y height of path points relative to anchor root (meters above floor).")]
-    public float pathYOffset = 0.02f;
+    public float  pathYOffset        = 0.02f;
 
     [Header("Routing")]
-    [Tooltip("How often (seconds) to re-run routing when position changes.")]
     public float routeUpdateInterval = 2.5f;
 
-    // ── Singleton ──────────────────────────────────────────────────────────────
     public static NavigationManager Instance { get; private set; }
 
-    // ── State ──────────────────────────────────────────────────────────────────
     private IndoorGraph _graph;
-    private string _currentNodeId   = null;
-    private string _destinationId   = null;
-    private string _lastRoutedStart = null;
-    private string _lastRoutedGoal  = null;
-    private bool   _isNavigating    = false;
-    private bool   _anchorPlaced    = false;
+    private Transform   _anchorRoot;
+    private string      _destinationId   = null;
+    private string      _lastStart       = null;
+    private string      _lastGoal        = null;
+    private bool        _isNavigating    = false;
+    private bool        _anchorPlaced    = false;
 
-    // ── Unity Lifecycle ────────────────────────────────────────────────────────
-    private void Awake()
+    void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
     }
 
-    private void Start()
+    void Start()
     {
         LoadGraph();
-
         if (NearestBeaconResolver.Instance != null)
             NearestBeaconResolver.Instance.OnNodeChanged += OnNodeChanged;
-
-        InvokeRepeating(nameof(TryUpdateRoute), 2f, routeUpdateInterval);
+        InvokeRepeating(nameof(PollRoute), 2f, routeUpdateInterval);
     }
 
-    private void OnDestroy()
+    void OnDestroy()
     {
         if (NearestBeaconResolver.Instance != null)
             NearestBeaconResolver.Instance.OnNodeChanged -= OnNodeChanged;
         CancelInvoke();
     }
 
-    // ── Graph Loading ──────────────────────────────────────────────────────────
-    private void LoadGraph()
+    // ── Graph ──────────────────────────────────────────────────────────────────
+    void LoadGraph()
     {
-        TextAsset jsonAsset = Resources.Load<TextAsset>(graphResourceName);
-        if (jsonAsset == null)
-        {
-            Debug.LogError($"[NavigationManager] Could not load '{graphResourceName}' from Resources/. " +
-                           "Make sure indoor_graph.json is in Assets/Resources/.");
-            return;
-        }
-
-        _graph = JsonUtility.FromJson<IndoorGraph>(jsonAsset.text);
+        var asset = Resources.Load<TextAsset>(graphResourceName);
+        if (asset == null) { Debug.LogError($"[NavManager] Cannot load '{graphResourceName}' from Resources."); return; }
+        _graph = JsonUtility.FromJson<IndoorGraph>(asset.text);
         _graph.Build();
-        Debug.Log($"[NavigationManager] Graph loaded: {_graph.nodes.Count} nodes, {_graph.edges.Count} edges.");
+        Debug.Log($"[NavManager] Graph loaded: {_graph.nodes.Count} nodes, {_graph.edges.Count} edges.");
     }
 
-    // ── Public API (called by UI and ARTapToPlace) ─────────────────────────────
-
-    /// <summary>
-    /// Called by ARTapToPlace after the anchor is placed on the floor.
-    /// This unlocks routing and path drawing.
-    /// </summary>
-    public void OnAnchorPlaced(Transform placedAnchor)
+    // ── Public API ──────────────────────────────────────────────────────────────
+    public void OnAnchorPlaced(Transform anchor)
     {
-        anchorRoot = placedAnchor;
+        _anchorRoot   = anchor;
         _anchorPlaced = true;
-        Debug.Log("[NavigationManager] Anchor placed. Ready to navigate.");
+        Debug.Log("[NavManager] Anchor placed.");
         uiManager?.OnAnchorReady();
     }
 
-    /// <summary>
-    /// Start navigating to a destination. Safe to call mid-navigation for chaining.
-    /// </summary>
-    public void StartNavigation(string destinationNodeId)
+    public void StartNavigation(string destinationId)
     {
-        if (_graph == null) { Debug.LogError("[NavigationManager] Graph not loaded."); return; }
-        if (!_graph.HasNode(destinationNodeId))
-        {
-            Debug.LogError($"[NavigationManager] Destination '{destinationNodeId}' not in graph.");
-            return;
-        }
+        if (_graph == null || !_graph.HasNode(destinationId))
+        { Debug.LogError($"[NavManager] Bad destination: {destinationId}"); return; }
 
-        _destinationId  = destinationNodeId;
-        _isNavigating   = true;
-        _lastRoutedStart = null; // force re-route
-        _lastRoutedGoal  = null;
+        _destinationId = destinationId;
+        _isNavigating  = true;
+        _lastStart     = null;
+        _lastGoal      = null;
 
-        string label = _graph.GetNode(destinationNodeId)?.label ?? destinationNodeId;
-        Debug.Log($"[NavigationManager] Navigation started → {label}");
-        uiManager?.OnNavigationStarted(destinationNodeId, label);
-
-        TryUpdateRoute();
+        string label = _graph.GetNode(destinationId)?.label ?? destinationId;
+        uiManager?.OnNavigationStarted(destinationId, label);
+        PollRoute();
     }
 
-    /// <summary>
-    /// Stop navigation, clear visuals, return to destination picker.
-    /// </summary>
     public void StopNavigation()
     {
         _isNavigating  = false;
         _destinationId = null;
         ClearVisuals();
         uiManager?.OnNavigationStopped();
-        Debug.Log("[NavigationManager] Navigation stopped.");
     }
 
-    /// <summary>
-    /// Returns all destination nodes for populating the UI picker.
-    /// </summary>
-    public List<GraphNode> GetDestinations()
-    {
-        return _graph?.GetDestinationNodes() ?? new List<GraphNode>();
-    }
-
+    public List<GraphNode> GetDestinations() => _graph?.GetDestinationNodes() ?? new List<GraphNode>();
     public bool IsNavigating => _isNavigating;
 
-    // ── Routing Logic ──────────────────────────────────────────────────────────
-    private void OnNodeChanged(string newNodeId, string label)
+    // ── Routing ────────────────────────────────────────────────────────────────
+    void OnNodeChanged(string nodeId, string label)
     {
-        _currentNodeId = newNodeId;
         uiManager?.UpdateCurrentLocation(label ?? "Unknown");
-
-        if (_isNavigating) TryUpdateRoute();
+        if (_isNavigating) PollRoute();
     }
 
-    private void TryUpdateRoute()
+    void PollRoute()
     {
         if (!_isNavigating || !_anchorPlaced) return;
 
-        string currentNode = NearestBeaconResolver.Instance?.GetCurrentNodeId() ?? _currentNodeId;
+        string current = NearestBeaconResolver.Instance?.GetCurrentNodeId();
 
-        if (currentNode == null)
-        {
-            uiManager?.ShowLocating();
-            ClearVisuals();
-            return;
-        }
+        if (current == null) { uiManager?.ShowLocating(); ClearVisuals(); return; }
 
-        // Check arrival
-        if (currentNode == _destinationId)
-        {
-            HandleArrival();
-            return;
-        }
+        if (current == _destinationId) { Arrive(); return; }
 
-        // Skip re-routing if nothing changed
-        if (currentNode == _lastRoutedStart && _destinationId == _lastRoutedGoal)
-            return;
+        if (current == _lastStart && _destinationId == _lastGoal) return;
+        _lastStart = current; _lastGoal = _destinationId;
 
-        _lastRoutedStart = currentNode;
-        _lastRoutedGoal  = _destinationId;
+        var route = AStarRouter.FindPath(_graph, current, _destinationId);
+        if (route == null || route.Count < 2) { ClearVisuals(); return; }
 
-        // Run A*
-        List<GraphNode> route = AStarRouter.FindPath(_graph, currentNode, _destinationId);
-
-        if (route == null || route.Count < 2)
-        {
-            Debug.LogWarning($"[NavigationManager] No route from {currentNode} to {_destinationId}.");
-            ClearVisuals();
-            return;
-        }
-
-        // Convert graph coords → AR world space
-        List<Vector3> worldPoints = GraphNodesToWorldPoints(route);
-
-        // Feed to existing visual scripts
-        pathMesh?.SetPath(worldPoints);
+        var pts = ToWorldPoints(route);
+        pathMesh?.SetPath(pts);
         turnMarkerPlacer?.GenerateTurnMarkers();
         destinationBeaconPlacer?.GenerateDestinationBeacon();
-
-        Debug.Log($"[NavigationManager] Route drawn: {route.Count} nodes, {worldPoints.Count} points.");
+        Debug.Log($"[NavManager] Route: {route.Count} nodes.");
     }
 
-    private void HandleArrival()
+    void Arrive()
     {
         _isNavigating = false;
         ClearVisuals();
-
         string label = _graph.GetNode(_destinationId)?.label ?? _destinationId;
-        Debug.Log($"[NavigationManager] Arrived at {label}!");
         uiManager?.OnArrived(_destinationId, label);
+        Debug.Log($"[NavManager] Arrived at {label}!");
     }
 
-    // ── Coordinate Conversion ──────────────────────────────────────────────────
-    /// <summary>
-    /// Converts graph-local (x, z) node coords into AR world-space Vector3 positions
-    /// using the anchorRoot transform as the spatial origin.
-    /// </summary>
-    private List<Vector3> GraphNodesToWorldPoints(List<GraphNode> nodes)
+    List<Vector3> ToWorldPoints(List<GraphNode> nodes)
     {
-        var worldPoints = new List<Vector3>();
-        foreach (var node in nodes)
-        {
-            // Graph coords are flat (x, z). Y is controlled by pathYOffset.
-            Vector3 localPos = new Vector3(node.x, pathYOffset, node.z);
-            Vector3 worldPos = anchorRoot.TransformPoint(localPos);
-            worldPoints.Add(worldPos);
-        }
-        return worldPoints;
+        var pts = new List<Vector3>();
+        foreach (var n in nodes)
+            pts.Add(_anchorRoot.TransformPoint(new Vector3(n.x, pathYOffset, n.z)));
+        return pts;
     }
 
-    // ── Visuals ────────────────────────────────────────────────────────────────
-    private void ClearVisuals()
+    void ClearVisuals()
     {
-        // Clear path mesh
         pathMesh?.SetPath(new List<Vector3>());
         turnMarkerPlacer?.ClearMarkers();
         destinationBeaconPlacer?.ClearBeacon();

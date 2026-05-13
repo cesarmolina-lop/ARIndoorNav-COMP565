@@ -4,61 +4,48 @@ using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
 /// <summary>
-/// ARTapToPlace — updated version.
-/// Places the anchor on the first tap, then notifies NavigationManager.
-/// Subsequent taps are ignored (anchor is locked after first placement).
-/// To allow re-placement, call ResetAnchor() from your debug panel if needed.
+/// Places the AR anchor on first floor tap. Notifies NavigationManager.
+/// Locks after first placement. Call ResetAnchor() to allow re-placement.
+/// Supports both old and new Unity Input System.
 /// </summary>
 public class ARTapToPlace : MonoBehaviour
 {
-    [Header("Prefab to place on tap (your existing AnchorRoot prefab)")]
+    [Header("Prefab placed on floor tap (your AnchorRoot or empty GO)")]
     public GameObject placementPrefab;
 
-    [Header("Lock anchor after first placement (recommended for demo)")]
+    [Header("Lock anchor after first tap (recommended for demo)")]
     public bool lockAfterFirstPlacement = true;
 
-    private ARRaycastManager raycastManager;
-    private GameObject spawnedObject;
-    private bool _anchorLocked = false;
+    private ARRaycastManager        raycastManager;
+    private GameObject              spawnedObject;
+    private bool                    _locked = false;
+    static  List<ARRaycastHit>      hits    = new List<ARRaycastHit>();
 
-    static List<ARRaycastHit> hits = new List<ARRaycastHit>();
-
-    void Awake()
-    {
-        raycastManager = GetComponent<ARRaycastManager>();
-    }
+    void Awake() => raycastManager = GetComponent<ARRaycastManager>();
 
     void Update()
     {
-        if (_anchorLocked) return;
+        if (_locked) return;
 
-        bool tappedThisFrame = false;
-        Vector2 tapPosition = Vector2.zero;
+        bool    tapped   = false;
+        Vector2 tapPos   = Vector2.zero;
 
 #if ENABLE_INPUT_SYSTEM
-        var touchscreen = UnityEngine.InputSystem.Touchscreen.current;
-        if (touchscreen != null && touchscreen.primaryTouch.press.wasPressedThisFrame)
-        {
-            tappedThisFrame = true;
-            tapPosition = touchscreen.primaryTouch.position.ReadValue();
-        }
+        var ts = UnityEngine.InputSystem.Touchscreen.current;
+        if (ts != null && ts.primaryTouch.press.wasPressedThisFrame)
+        { tapped = true; tapPos = ts.primaryTouch.position.ReadValue(); }
+
         var mouse = UnityEngine.InputSystem.Mouse.current;
         if (mouse != null && mouse.leftButton.wasPressedThisFrame)
-        {
-            tappedThisFrame = true;
-            tapPosition = mouse.position.ReadValue();
-        }
+        { tapped = true; tapPos = mouse.position.ReadValue(); }
 #else
         if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began)
-        {
-            tappedThisFrame = true;
-            tapPosition     = Input.GetTouch(0).position;
-        }
+        { tapped = true; tapPos = Input.GetTouch(0).position; }
 #endif
 
-        if (!tappedThisFrame) return;
+        if (!tapped) return;
 
-        if (raycastManager.Raycast(tapPosition, hits, TrackableType.PlaneWithinPolygon))
+        if (raycastManager.Raycast(tapPos, hits, TrackableType.PlaneWithinPolygon))
         {
             Pose hitPose = hits[0].pose;
 
@@ -69,25 +56,21 @@ public class ARTapToPlace : MonoBehaviour
 
             NavigationManager.Instance?.OnAnchorPlaced(spawnedObject.transform);
 
-            if (lockAfterFirstPlacement)
-                _anchorLocked = true;
+            if (lockAfterFirstPlacement) _locked = true;
 
             Debug.Log($"[ARTapToPlace] Anchor placed at {hitPose.position}");
         }
         else
         {
-            Debug.Log("[ARTapToPlace] Tap did not hit a detected plane. Keep scanning...");
+            Debug.Log("[ARTapToPlace] Tap missed plane — keep scanning.");
         }
     }
 
-    /// <summary>
-    /// Call this to allow re-placement (e.g. from a "Recenter" button).
-    /// </summary>
     public void ResetAnchor()
     {
-        _anchorLocked = false;
-        if (spawnedObject != null) Destroy(spawnedObject);
+        _locked = false;
+        if (spawnedObject) Destroy(spawnedObject);
         spawnedObject = null;
-        Debug.Log("[ARTapToPlace] Anchor reset. Tap floor to re-place.");
+        Debug.Log("[ARTapToPlace] Anchor reset.");
     }
 }
