@@ -31,31 +31,52 @@ public class ARTapToPlace : MonoBehaviour
     void Update()
     {
         if (_anchorLocked) return;
-        if (Input.touchCount == 0) return;
 
-        Touch touch = Input.GetTouch(0);
-        if (touch.phase != TouchPhase.Began) return;
+        bool tappedThisFrame = false;
+        Vector2 tapPosition = Vector2.zero;
 
-        if (raycastManager.Raycast(touch.position, hits, TrackableType.PlaneWithinPolygon))
+#if ENABLE_INPUT_SYSTEM
+        var touchscreen = UnityEngine.InputSystem.Touchscreen.current;
+        if (touchscreen != null && touchscreen.primaryTouch.press.wasPressedThisFrame)
+        {
+            tappedThisFrame = true;
+            tapPosition = touchscreen.primaryTouch.position.ReadValue();
+        }
+        var mouse = UnityEngine.InputSystem.Mouse.current;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+        {
+            tappedThisFrame = true;
+            tapPosition = mouse.position.ReadValue();
+        }
+#else
+        if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began)
+        {
+            tappedThisFrame = true;
+            tapPosition     = Input.GetTouch(0).position;
+        }
+#endif
+
+        if (!tappedThisFrame) return;
+
+        if (raycastManager.Raycast(tapPosition, hits, TrackableType.PlaneWithinPolygon))
         {
             Pose hitPose = hits[0].pose;
 
             if (spawnedObject == null)
-            {
                 spawnedObject = Instantiate(placementPrefab, hitPose.position, hitPose.rotation);
-            }
             else
-            {
                 spawnedObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
-            }
 
-            // Notify NavigationManager that anchor is placed
             NavigationManager.Instance?.OnAnchorPlaced(spawnedObject.transform);
 
             if (lockAfterFirstPlacement)
                 _anchorLocked = true;
 
             Debug.Log($"[ARTapToPlace] Anchor placed at {hitPose.position}");
+        }
+        else
+        {
+            Debug.Log("[ARTapToPlace] Tap did not hit a detected plane. Keep scanning...");
         }
     }
 
