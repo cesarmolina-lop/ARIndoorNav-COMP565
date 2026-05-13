@@ -21,7 +21,7 @@ public class BLEManager : MonoBehaviour
 {
     // ── Configuration — EDIT THESE ─────────────────────────────────────────────
     // Replace with YOUR project UUID (same UUID configured on all beacons).
-    private const string BEACON_UUID = "YOUR-UUID-HERE-REPLACE-ME";
+    private const string BEACON_UUID = "93cef9fe-d866-4c94-8e8d-a32f56c956a5";
     private const string BEACON_IDENTIFIER = "HoloNav";
 
     // Rolling average window for RSSI smoothing.
