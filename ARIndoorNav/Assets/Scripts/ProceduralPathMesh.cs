@@ -25,7 +25,6 @@ public class ProceduralPathMesh : MonoBehaviour
     {
         meshFilter = GetComponent<MeshFilter>();
         CreateMeshIfNeeded();
-        GeneratePathMesh(testPoints);
     }
 
 #if UNITY_EDITOR
