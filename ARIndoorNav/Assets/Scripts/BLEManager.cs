@@ -10,7 +10,7 @@ using UnityEngine;
 public class BLEManager : MonoBehaviour
 {
     // ── Edit these ─────────────────────────────────────────────────────────────
-    private const string BEACON_UUID       = "YOUR-UUID-HERE-REPLACE-ME";
+    private const string BEACON_UUID       = "93cef9fe-d866-4c94-8e8d-a32f56c956a5";
     private const string BEACON_IDENTIFIER = "HoloNav";
     private const int    SMOOTHING_WINDOW  = 5;
     private const float  MIN_RSSI          = -88f;
